@@ -4,15 +4,13 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 
-<title>CPALL Delivery Dashboard V3</title>
+<title>CPALL Delivery Dashboard V4</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 
 <style>
-
-*{
-box-sizing:border-box;
-}
+*{box-sizing:border-box}
 
 body{
 margin:0;
@@ -31,19 +29,19 @@ padding:20px;
 }
 
 .toolbar{
-background:white;
+background:#fff;
 padding:15px;
 border-radius:12px;
-margin-bottom:20px;
 display:flex;
 gap:10px;
 flex-wrap:wrap;
+margin-bottom:20px;
 }
 
 button,input,select{
 padding:10px;
-border:1px solid #ccc;
 border-radius:6px;
+border:1px solid #ccc;
 }
 
 button{
@@ -66,13 +64,14 @@ border-radius:12px;
 box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
 
-.card-title{
-color:#666;
+.card h3{
+margin:0;
 font-size:14px;
+color:#666;
 }
 
-.card-value{
-font-size:32px;
+.card .value{
+font-size:30px;
 font-weight:bold;
 margin-top:10px;
 }
@@ -90,25 +89,22 @@ border-collapse:collapse;
 }
 
 th,td{
-padding:10px;
 border:1px solid #ddd;
+padding:8px;
 }
 
 th{
 background:#0d3b66;
 color:white;
 }
-
 </style>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 
 <body>
 
 <header>
-<h1>CPALL Delivery Dashboard V3</h1>
+<h1>CPALL Delivery Dashboard V4</h1>
 </header>
 
 <div class="container">
@@ -116,22 +112,20 @@ color:white;
 <div class="toolbar">
 
 <input
-id="dataFile"
 type="file"
+id="dataFile"
 accept=".csv,.xlsx,.xls">
 
 <button onclick="importData()">
-Import Excel
+Import File
 </button>
 
 <select
 id="storeFilter"
 onchange="refreshDashboard()">
-
 <option value="">
 ทุกสาขา
 </option>
-
 </select>
 
 <button onclick="exportCSV()">
@@ -147,588 +141,13 @@ Export CSV
 <div class="cards">
 
 <div class="card">
-<div class="card-title">
-ยอดขายรวม
-</div>
-
-<div class="card-value"
-id="totalSales">
-0
-</div>
+<h3>ยอดขายรวม</h3>
+<div
+class="value"
+id="totalSales">0</div>
 </div>
 
 <div class="card">
-
-<div class="card-title">
-จำนวนรายการ
-</div>
-
-<div class="card-value"
-id="totalRows">
-0
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="card-title">
-จำนวนสาขา
-</div>
-
-<div class="card-value"
-id="totalStores">
-0
-</div>
-
-</div>
-
-<div class="card">
-
-<div class="card-title">
-ยอดเฉลี่ยต่อรายการ
-</div>
-
-<div class="card-value"
-id="avgSales">
-0
-</div>
-
-</div>
-
-</div>
-
-<div class="panel">
-
-<h3>ยอดขายรายวัน</h3>
-
-<canvas id="dailyChart"></canvas>
-
-</div>
-
-<div class="panel">
-
-<h3>แนวโน้มรายเดือน</h3>
-
-<canvas id="trendChart"></canvas>
-
-</div>
-
-<div class="panel">
-
-<h3>Store Ranking</h3>
-
-<table>
-
-<thead>
-<tr>
-<th>#</th>
-<th>Store ID</th>
-<th>Store Name</th>
-<th>Sales</th>
-</tr>
-</thead>
-
-<tbody id="rankingBody">
-</tbody>
-
-</table>
-
-</div>
-
-</div>
-
-<script>
-
-let SALES_DB =
-JSON.parse(
-localStorage.getItem(
-"SALES_DB"
-)
-) || [];
-
-let dailyChart;
-let trendChart;
-
-buildStoreFilter();
-refreshDashboard();
-
-function importData(){
-
-    const file =
-    document.getElementById(
-        "dataFile"
-    ).files[0];
-
-    if(!file){
-
-        alert("กรุณาเลือกไฟล์");
-
-        return;
-    }
-
-    const ext =
-    file.name
-    .split(".")
-    .pop()
-    .toLowerCase();
-
-    if(ext==="csv"){
-
-        importCSVFile(file);
-
-    }
-    else{
-
-        importExcelFile(file);
-
-    }
-
-}
-function importCSVFile(file){
-
-    const reader =
-    new FileReader();
-
-    reader.onload = function(e){
-
-        const rows =
-        e.target.result
-        .trim()
-        .split("\n");
-
-        for(let i=1;i<rows.length;i++){
-
-            const cols =
-            rows[i].split(",");
-
-            SALES_DB.push({
-
-                date: cols[0],
-
-                storeId: cols[1],
-
-                storeName: cols[2],
-
-                sales: Number(cols[3])
-
-            });
-
-        }
-
-        saveDB();
-
-        buildStoreFilter();
-
-        refreshDashboard();
-
-        alert("นำเข้า CSV สำเร็จ");
-
-    };
-
-    reader.readAsText(file);
-
-}
-function importExcelFile(file){
-
-    const reader =
-    new FileReader();
-
-    reader.onload = function(e){
-
-        const workbook =
-        XLSX.read(
-            e.target.result,
-            {
-                type:"binary"
-            }
-        );
-
-        const sheet =
-        workbook.Sheets[
-            workbook.SheetNames[0]
-        ];
-
-        const rows =
-        XLSX.utils.sheet_to_json(
-            sheet,
-            {
-                defval:""
-            }
-        );
-
-        console.log(rows);
-
-        alert(
-          "อ่าน Excel ได้ "
-          + rows.length +
-          " แถว"
-        );
-
-    };
-
-    reader.readAsBinaryString(file);
-
-}
-
-function saveDB(){
-
-localStorage.setItem(
-"SALES_DB",
-JSON.stringify(
-SALES_DB
-)
-);
-
-}
-
-function clearDatabase(){
-
-if(
-!confirm(
-"ล้างข้อมูลทั้งหมด?"
-)
-)
-return;
-
-SALES_DB=[];
-
-saveDB();
-
-buildStoreFilter();
-
-refreshDashboard();
-
-}
-
-function buildStoreFilter(){
-
-let stores=[
-
-...new Set(
-
-SALES_DB.map(
-x=>x.storeName
-)
-
-)
-
-];
-
-let html=
-
-'<option value="">ทุกสาขา</option>';
-
-stores.forEach(store=>{
-
-html+=
-
-`<option value="${store}">
-${store}
-</option>`;
-
-});
-
-document
-.getElementById(
-"storeFilter"
-)
-.innerHTML=html;
-
-}
-
-function filteredData(){
-
-let store=
-
-document
-.getElementById(
-"storeFilter"
-)
-.value;
-
-if(!store){
-
-return SALES_DB;
-
-}
-
-return SALES_DB.filter(
-x=>x.storeName===store
-);
-
-}
-
-function refreshDashboard(){
-
-let data=
-filteredData();
-
-let totalSales=
-
-data.reduce(
-(a,b)=>
-a+b.sales,
-0
-);
-
-document
-.getElementById(
-"totalSales"
-)
-.innerText=
-
-totalSales
-.toLocaleString();
-
-document
-.getElementById(
-"totalRows"
-)
-.innerText=
-
-data.length;
-
-document
-.getElementById(
-"totalStores"
-)
-.innerText=
-
-new Set(
-data.map(
-x=>x.storeId
-)
-).size;
-
-document
-.getElementById(
-"avgSales"
-)
-.innerText=
-
-Math.round(
-totalSales/
-Math.max(
-1,
-data.length
-)
-)
-.toLocaleString();
-
-buildRanking(data);
-
-buildDailyChart(data);
-
-buildTrendChart(data);
-
-}
-
-function buildRanking(data){
-
-let ranking={};
-
-data.forEach(r=>{
-
-let key=
-
-r.storeId+
-"||"+
-r.storeName;
-
-ranking[key]=
-(ranking[key]||0)
-+
-r.sales;
-
-});
-
-let rows=
-
-Object.entries(
-ranking
-)
-
-.sort(
-(a,b)=>
-b[1]-a[1]
-);
-
-let html="";
-
-rows.forEach(
-(r,i)=>{
-
-let p=
-r[0].split("||");
-
-html+=`
-
-<tr>
-
-<td>${i+1}</td>
-
-
-<td>${p[1]}</td>
-
-<td>
-${r[1].toLocaleString()}
-</td>
-
-</tr>
-
-`;
-
-});
-
-document
-.getElementById(
-"rankingBody"
-)
-.innerHTML=html;
-
-}
-
-function buildDailyChart(data){
-
-let group={};
-
-data.forEach(r=>{
-
-group[r.date]=
-(group[r.date]||0)
-+
-r.sales;
-
-});
-
-let labels=
-Object.keys(group);
-
-let values=
-Object.values(group);
-
-if(dailyChart)
-dailyChart.destroy();
-
-dailyChart=
-new Chart(
-document.getElementById(
-"dailyChart"
-),
-{
-type:"bar",
-data:{
-labels,
-datasets:[
-{
-label:"Daily Sales",
-data:values
-}
-]
-}
-}
-);
-
-}
-
-function buildTrendChart(data){
-
-let group={};
-
-data.forEach(r=>{
-
-let month=
-r.date.substring(
-0,
-7
-);
-
-group[month]=
-(group[month]||0)
-+
-r.sales;
-
-});
-
-let labels=
-Object.keys(group);
-
-let values=
-Object.values(group);
-
-if(trendChart)
-trendChart.destroy();
-
-trendChart=
-new Chart(
-document.getElementById(
-"trendChart"
-),
-{
-type:"line",
-data:{
-labels,
-datasets:[
-{
-label:
-"Monthly Sales",
-data:values,
-borderColor:
-"#198754",
-tension:0.3
-}
-]
-}
-}
-);
-
-}
-
-function exportCSV(){
-
-let csv=
-
-"Date,StoreID,StoreName,Sales\n";
-
-SALES_DB.forEach(r=>{
-
-csv +=
-
-`${r.date},
-${r.storeId},
-${r.storeName},
-${r.sales}\n`;
-
-});
-
-let blob=
-
-new Blob(
-[csv],
-{
-type:"text/csv"
-}
-);
-
-let a=
-document.createElement(
-"a"
-);
-
-a.href=
-URL.createObjectURL(
-blob
-);
-
-a.download=
-"sales_history.csv";
-
-a.click();
-
-}
-
-</script>
-
-</body>
-</html>
+<h3>จำนวนรายการ</h3>
+<div
+class="value
