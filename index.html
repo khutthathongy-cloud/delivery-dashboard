@@ -2,46 +2,670 @@
 <html lang="th">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CPALL Delivery Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>CPALL Delivery Dashboard V3</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <style>
+
+*{
+box-sizing:border-box;
+}
+
 body{
-    font-family:Segoe UI,sans-serif;
-    margin:0;
-    background:#f4f6f9;
+margin:0;
+font-family:Segoe UI,sans-serif;
+background:#f3f5f8;
 }
+
 header{
-    background:#0d3b66;
-    color:white;
-    padding:20px;
+background:#0d3b66;
+color:white;
+padding:20px;
 }
+
 .container{
-    padding:20px;
+padding:20px;
 }
+
+.toolbar{
+background:white;
+padding:15px;
+border-radius:12px;
+margin-bottom:20px;
+display:flex;
+gap:10px;
+flex-wrap:wrap;
+}
+
+button,input,select{
+padding:10px;
+border:1px solid #ccc;
+border-radius:6px;
+}
+
+button{
+background:#0d6efd;
+color:white;
+cursor:pointer;
+}
+
+.cards{
+display:grid;
+grid-template-columns:repeat(auto-fit,minmax(220px,1fr));
+gap:15px;
+margin-bottom:20px;
+}
+
 .card{
-    background:white;
-    padding:20px;
-    border-radius:12px;
-    box-shadow:0 2px 8px rgba(0,0,0,.1);
+background:white;
+padding:20px;
+border-radius:12px;
+box-shadow:0 2px 8px rgba(0,0,0,.08);
 }
+
+.card-title{
+color:#666;
+font-size:14px;
+}
+
+.card-value{
+font-size:32px;
+font-weight:bold;
+margin-top:10px;
+}
+
+.panel{
+background:white;
+padding:20px;
+border-radius:12px;
+margin-bottom:20px;
+}
+
+table{
+width:100%;
+border-collapse:collapse;
+}
+
+th,td{
+padding:10px;
+border:1px solid #ddd;
+}
+
+th{
+background:#0d3b66;
+color:white;
+}
+
 </style>
+
 </head>
 
 <body>
 
 <header>
-    <h1>CPALL Delivery Dashboard</h1>
+<h1>CPALL Delivery Dashboard V3</h1>
 </header>
 
 <div class="container">
 
+<div class="toolbar">
+
+<input
+id="csvFile"
+type="file"
+accept=".csv">
+
+<button onclick="importCSV()">
+Import CSV
+</button>
+
+<select
+id="storeFilter"
+onchange="refreshDashboard()">
+
+<option value="">
+ทุกสาขา
+</option>
+
+</select>
+
+<button onclick="exportCSV()">
+Export CSV
+</button>
+
+<button onclick="clearDatabase()">
+ล้างข้อมูล
+</button>
+
+</div>
+
+<div class="cards">
+
 <div class="card">
-    <h2>Dashboard Online สำเร็จ 🎉</h2>
-    <p>Repository เชื่อมต่อกับ GitHub Pages เรียบร้อยแล้ว</p>
+<div class="card-title">
+ยอดขายรวม
+</div>
+
+<div class="card-value"
+id="totalSales">
+0
+</div>
+</div>
+
+<div class="card">
+
+<div class="card-title">
+จำนวนรายการ
+</div>
+
+<div class="card-value"
+id="totalRows">
+0
 </div>
 
 </div>
+
+<div class="card">
+
+<div class="card-title">
+จำนวนสาขา
+</div>
+
+<div class="card-value"
+id="totalStores">
+0
+</div>
+
+</div>
+
+<div class="card">
+
+<div class="card-title">
+ยอดเฉลี่ยต่อรายการ
+</div>
+
+<div class="card-value"
+id="avgSales">
+0
+</div>
+
+</div>
+
+</div>
+
+<div class="panel">
+
+<h3>ยอดขายรายวัน</h3>
+
+<canvas id="dailyChart"></canvas>
+
+</div>
+
+<div class="panel">
+
+<h3>แนวโน้มรายเดือน</h3>
+
+<canvas id="trendChart"></canvas>
+
+</div>
+
+<div class="panel">
+
+<h3>Store Ranking</h3>
+
+<table>
+
+<thead>
+<tr>
+<th>#</th>
+<th>Store ID</th>
+<th>Store Name</th>
+<th>Sales</th>
+</tr>
+</thead>
+
+<tbody id="rankingBody">
+</tbody>
+
+</table>
+
+</div>
+
+</div>
+
+<script>
+
+let SALES_DB =
+JSON.parse(
+localStorage.getItem(
+"SALES_DB"
+)
+) || [];
+
+let dailyChart;
+let trendChart;
+
+buildStoreFilter();
+refreshDashboard();
+
+function importCSV(){
+
+let file=
+document.getElementById(
+"csvFile"
+).files[0];
+
+if(!file){
+
+alert("กรุณาเลือก CSV");
+
+return;
+}
+
+let reader =
+new FileReader();
+
+reader.onload=function(e){
+
+let rows=
+e.target.result
+.trim()
+.split("\n");
+
+for(let i=1;i<rows.length;i++){
+
+let cols=
+rows[i].split(",");
+
+SALES_DB.push({
+
+date:cols[0],
+
+storeId:cols[1],
+
+storeName:cols[2],
+
+sales:Number(cols[3])
+
+});
+
+}
+
+saveDB();
+
+buildStoreFilter();
+
+refreshDashboard();
+
+alert("Import สำเร็จ");
+
+};
+
+reader.readAsText(file);
+
+}
+
+function saveDB(){
+
+localStorage.setItem(
+"SALES_DB",
+JSON.stringify(
+SALES_DB
+)
+);
+
+}
+
+function clearDatabase(){
+
+if(
+!confirm(
+"ล้างข้อมูลทั้งหมด?"
+)
+)
+return;
+
+SALES_DB=[];
+
+saveDB();
+
+buildStoreFilter();
+
+refreshDashboard();
+
+}
+
+function buildStoreFilter(){
+
+let stores=[
+
+...new Set(
+
+SALES_DB.map(
+x=>x.storeName
+)
+
+)
+
+];
+
+let html=
+
+'<option value="">ทุกสาขา</option>';
+
+stores.forEach(store=>{
+
+html+=
+
+`<option value="${store}">
+${store}
+</option>`;
+
+});
+
+document
+.getElementById(
+"storeFilter"
+)
+.innerHTML=html;
+
+}
+
+function filteredData(){
+
+let store=
+
+document
+.getElementById(
+"storeFilter"
+)
+.value;
+
+if(!store){
+
+return SALES_DB;
+
+}
+
+return SALES_DB.filter(
+x=>x.storeName===store
+);
+
+}
+
+function refreshDashboard(){
+
+let data=
+filteredData();
+
+let totalSales=
+
+data.reduce(
+(a,b)=>
+a+b.sales,
+0
+);
+
+document
+.getElementById(
+"totalSales"
+)
+.innerText=
+
+totalSales
+.toLocaleString();
+
+document
+.getElementById(
+"totalRows"
+)
+.innerText=
+
+data.length;
+
+document
+.getElementById(
+"totalStores"
+)
+.innerText=
+
+new Set(
+data.map(
+x=>x.storeId
+)
+).size;
+
+document
+.getElementById(
+"avgSales"
+)
+.innerText=
+
+Math.round(
+totalSales/
+Math.max(
+1,
+data.length
+)
+)
+.toLocaleString();
+
+buildRanking(data);
+
+buildDailyChart(data);
+
+buildTrendChart(data);
+
+}
+
+function buildRanking(data){
+
+let ranking={};
+
+data.forEach(r=>{
+
+let key=
+
+r.storeId+
+"||"+
+r.storeName;
+
+ranking[key]=
+(ranking[key]||0)
++
+r.sales;
+
+});
+
+let rows=
+
+Object.entries(
+ranking
+)
+
+.sort(
+(a,b)=>
+b[1]-a[1]
+);
+
+let html="";
+
+rows.forEach(
+(r,i)=>{
+
+let p=
+r[0].split("||");
+
+html+=`
+
+<tr>
+
+<td>${i+1}</td>
+
+
+<td>${p[1]}</td>
+
+<td>
+${r[1].toLocaleString()}
+</td>
+
+</tr>
+
+`;
+
+});
+
+document
+.getElementById(
+"rankingBody"
+)
+.innerHTML=html;
+
+}
+
+function buildDailyChart(data){
+
+let group={};
+
+data.forEach(r=>{
+
+group[r.date]=
+(group[r.date]||0)
++
+r.sales;
+
+});
+
+let labels=
+Object.keys(group);
+
+let values=
+Object.values(group);
+
+if(dailyChart)
+dailyChart.destroy();
+
+dailyChart=
+new Chart(
+document.getElementById(
+"dailyChart"
+),
+{
+type:"bar",
+data:{
+labels,
+datasets:[
+{
+label:"Daily Sales",
+data:values
+}
+]
+}
+}
+);
+
+}
+
+function buildTrendChart(data){
+
+let group={};
+
+data.forEach(r=>{
+
+let month=
+r.date.substring(
+0,
+7
+);
+
+group[month]=
+(group[month]||0)
++
+r.sales;
+
+});
+
+let labels=
+Object.keys(group);
+
+let values=
+Object.values(group);
+
+if(trendChart)
+trendChart.destroy();
+
+trendChart=
+new Chart(
+document.getElementById(
+"trendChart"
+),
+{
+type:"line",
+data:{
+labels,
+datasets:[
+{
+label:
+"Monthly Sales",
+data:values,
+borderColor:
+"#198754",
+tension:0.3
+}
+]
+}
+}
+);
+
+}
+
+function exportCSV(){
+
+let csv=
+
+"Date,StoreID,StoreName,Sales\n";
+
+SALES_DB.forEach(r=>{
+
+csv +=
+
+`${r.date},
+${r.storeId},
+${r.storeName},
+${r.sales}\n`;
+
+});
+
+let blob=
+
+new Blob(
+[csv],
+{
+type:"text/csv"
+}
+);
+
+let a=
+document.createElement(
+"a"
+);
+
+a.href=
+URL.createObjectURL(
+blob
+);
+
+a.download=
+"sales_history.csv";
+
+a.click();
+
+}
+
+</script>
 
 </body>
 </html>
