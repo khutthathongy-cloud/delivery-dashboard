@@ -100,7 +100,9 @@ color:white;
 }
 
 </style>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+<script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
 </head>
 
 <body>
@@ -114,12 +116,12 @@ color:white;
 <div class="toolbar">
 
 <input
-id="csvFile"
+id="dataFile"
 type="file"
-accept=".csv">
+accept=".csv,.xlsx,.xls">
 
-<button onclick="importCSV()">
-Import CSV
+<button onclick="importData()">
+Import Excel
 </button>
 
 <select
@@ -251,18 +253,121 @@ let trendChart;
 buildStoreFilter();
 refreshDashboard();
 
-function importCSV(){
+function importData(){
 
-let file=
-document.getElementById(
-"csvFile"
-).files[0];
+    const file =
+    document.getElementById(
+        "dataFile"
+    ).files[0];
 
-if(!file){
+    if(!file){
 
-alert("กรุณาเลือก CSV");
+        alert("กรุณาเลือกไฟล์");
 
-return;
+        return;
+    }
+
+    const ext =
+    file.name
+    .split(".")
+    .pop()
+    .toLowerCase();
+
+    if(ext==="csv"){
+
+        importCSVFile(file);
+
+    }else{
+
+        importExcelFile(file);
+
+    }
+
+}
+function importCSVFile(file){
+
+    const reader =
+    new FileReader();
+
+    reader.onload = function(e){
+
+        const rows =
+        e.target.result
+        .trim()
+        .split("\n");
+
+        for(let i=1;i<rows.length;i++){
+
+            const cols =
+            rows[i].split(",");
+
+            SALES_DB.push({
+
+                date: cols[0],
+
+                storeId: cols[1],
+
+                storeName: cols[2],
+
+                sales: Number(cols[3])
+
+            });
+
+        }
+
+        saveDB();
+
+        buildStoreFilter();
+
+        refreshDashboard();
+
+        alert("นำเข้า CSV สำเร็จ");
+
+    };
+
+    reader.readAsText(file);
+
+}
+function importExcelFile(file){
+
+    const reader =
+    new FileReader();
+
+    reader.onload = function(e){
+
+        const workbook =
+        XLSX.read(
+            e.target.result,
+            {
+                type:"binary"
+            }
+        );
+
+        const sheet =
+        workbook.Sheets[
+            workbook.SheetNames[0]
+        ];
+
+        const rows =
+        XLSX.utils.sheet_to_json(
+            sheet,
+            {
+                defval:""
+            }
+        );
+
+        console.log(rows);
+
+        alert(
+          "อ่าน Excel ได้ "
+          + rows.length +
+          " แถว"
+        );
+
+    };
+
+    reader.readAsBinaryString(file);
+
 }
 
 let reader =
