@@ -1,0 +1,309 @@
+# 🎁 Coupon Receipt Verification System
+
+ระบบลงทะเบียนรับคูปองอัตโนมัติจากใบเสร็จ โดยใช้ OCR อ่านข้อมูลจากรูปใบเสร็จ ตรวจสอบเงื่อนไขยอดซื้อ และออกเลขคูปองอัตโนมัติ
+
+---
+
+## 📋 Features
+
+- ✅ ลงทะเบียนชื่อและเบอร์โทรศัพท์
+- ✅ อัปโหลดรูปใบเสร็จ
+- ✅ OCR อ่านข้อมูลจากใบเสร็จ
+- ✅ ตรวจสอบยอดซื้อขั้นต่ำ 300 บาท
+- ✅ ตรวจสอบเลขใบเสร็จซ้ำ
+- ✅ ออกเลขคูปองอัตโนมัติ
+- ✅ บันทึกข้อมูลลูกค้าลง Firebase Firestore
+- ✅ รองรับการ Deploy บน Vercel / Netlify / Firebase Hosting
+
+---
+
+## 🏗 Technology Stack
+
+### Frontend
+- React
+- Vite
+- JavaScript
+
+### OCR
+- Tesseract.js
+
+### Database
+- Firebase Firestore
+
+### File Storage
+- Firebase Storage
+
+---
+
+## 📱 Workflow
+
+1. ลูกค้าเปิดหน้าเว็บ
+2. กรอกชื่อและเบอร์โทรศัพท์
+3. อัปโหลดรูปใบเสร็จ
+4. ระบบ OCR อ่านข้อมูลจากใบเสร็จ
+5. ตรวจสอบ
+
+   - ยอดซื้อ ≥ 300 บาท
+   - ใบเสร็จไม่ถูกใช้ซ้ำ
+
+6. สร้างเลขคูปองอัตโนมัติ
+7. บันทึกข้อมูลลงฐานข้อมูล
+8. แสดงผล "รับคูปองสำเร็จ"
+
+---
+
+## 📂 Project Structure
+
+```text
+coupon-app/
+│
+├── public/
+│
+├── src/
+│   ├── firebase.js
+│   ├── App.jsx
+│   ├── App.css
+│   │
+│   ├── services/
+│   │   ├── ocrService.js
+│   │   └── couponService.js
+│   │
+│   └── main.jsx
+│
+├── .env
+├── package.json
+├── vite.config.js
+└── README.md
+```
+
+---
+
+## 🚀 Installation
+
+Clone Repository
+
+```bash
+git clone https://github.com/yourname/coupon-app.git
+
+cd coupon-app
+```
+
+Install Package
+
+```bash
+npm install
+```
+
+Start Development Server
+
+```bash
+npm run dev
+```
+
+Build Production
+
+```bash
+npm run build
+```
+
+---
+
+## ⚙ Environment Variables
+
+สร้างไฟล์ `.env`
+
+```env
+VITE_API_KEY=YOUR_API_KEY
+
+VITE_AUTH_DOMAIN=YOUR_PROJECT.firebaseapp.com
+
+VITE_PROJECT_ID=YOUR_PROJECT_ID
+
+VITE_STORAGE_BUCKET=YOUR_PROJECT.appspot.com
+```
+
+---
+
+## 🔥 Firebase Setup
+
+### Step 1
+
+สร้าง Project บน Firebase
+
+https://console.firebase.google.com
+
+### Step 2
+
+เปิดใช้งาน
+
+- Firestore Database
+- Storage
+
+### Step 3
+
+กำหนด Rules
+
+Firestore
+
+```javascript
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /customers/{document} {
+
+      allow read, write:
+      if true;
+
+    }
+  }
+}
+```
+
+> หมายเหตุ:
+> สำหรับ Production ควรใช้ Firebase Authentication
+> และกำหนด Security Rules เพิ่มเติม
+
+---
+
+## 🗂 Firestore Collection
+
+Collection Name
+
+```text
+customers
+```
+
+Document Sample
+
+```json
+{
+  "couponID": "CP-20261117-123456",
+  "name": "สมชาย ใจดี",
+  "phone": "0812345678",
+  "receiptNo": "RC123456789",
+  "amount": 358,
+  "createdAt": "2026-11-17T10:30:00"
+}
+```
+
+---
+
+## 🎫 Coupon Format
+
+ตัวอย่าง
+
+```text
+CP-20261117-123456
+```
+
+โครงสร้าง
+
+```text
+CP-YYYYMMDD-RANDOM
+```
+
+---
+
+## 🛡 Validation Rules
+
+### ผ่านเงื่อนไข
+
+- ยอดซื้อไม่น้อยกว่า 300 บาท
+- ใบเสร็จไม่เคยใช้มาก่อน
+
+### ไม่ผ่านเงื่อนไข
+
+- ยอดซื้อต่ำกว่า 300 บาท
+- ใบเสร็จซ้ำ
+- ไม่พบข้อมูลในใบเสร็จ
+
+---
+
+## 🔐 Recommended Production Improvements
+
+### Security
+
+- Firebase Authentication
+- Google reCAPTCHA
+- Rate Limiting
+
+### OCR
+
+- Azure AI Document Intelligence
+- Google Vision API
+
+### Coupon
+
+- QR Code Coupon
+- Barcode Validation
+- Coupon Expiration Date
+
+### Administration
+
+- Admin Dashboard
+- Search Customer
+- Export Excel
+- Analytics Report
+
+---
+
+## 🌐 Deployment
+
+### Vercel
+
+```bash
+npm install -g vercel
+
+vercel
+```
+
+### Netlify
+
+```bash
+npm run build
+```
+
+Upload folder
+
+```text
+dist/
+```
+
+### Firebase Hosting
+
+```bash
+npm install -g firebase-tools
+
+firebase login
+
+firebase init hosting
+
+firebase deploy
+```
+
+---
+
+## 📈 Future Roadmap
+
+- [ ] OCR ภาษาไทย
+- [ ] ตรวจสอบเลขใบเสร็จอัตโนมัติ
+- [ ] LINE OA Integration
+- [ ] SMS Notification
+- [ ] Power BI Dashboard
+- [ ] Multi-Branch Support
+- [ ] Azure SQL Support
+- [ ] SharePoint Integration
+
+---
+
+## 👨‍💻 Author
+
+Developed for promotional coupon registration and receipt validation.
+
+---
+
+## 📄 License
+
+MIT License
